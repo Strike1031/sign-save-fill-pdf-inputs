@@ -1,18 +1,15 @@
-import React, { Component, useState, ChangeEvent, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 import { PDFDocument } from 'pdf-lib';
 import SignaturePad from 'react-signature-pad-wrapper';
-import SignatureCanvas from 'react-signature-canvas';
 import {
   FaPencilAlt,
   FaEraser,
-  FaSpinner,
   FaFileSignature,
 } from 'react-icons/fa';
-
+import interact from "interactjs";
 import { SignContainer, PdfContainer, SignButton } from './styles';
 import Container from '../../components/Container';
-import interact from "interactjs";
 import { useOnClickOutside } from "./useOnClickOutside";
 import { dragMoveListener, resizeListener } from "./listeners";
 
@@ -30,9 +27,9 @@ export default function Main() {
   const [pdfObjectRightY, setPdfObjectRightY] = useState(0);
   const [signButtonShow, SetSignButtonShow] = useState("none");
   const [pdfObjectPosition, setPdfObjectPosition] = useState({ x: 0, y: 0 });
-  //Ref
-  //const signaturePad = useRef< SignaturePad >(null);
-  //const signatureRef = useRef< HTMLDivElement >(null);
+  // Ref
+  // const signaturePad = useRef< SignaturePad >(null);
+  // const signatureRef = useRef< HTMLDivElement >(null);
 
   const signaturePad = useRef(SignaturePad);
   const signatureRef = useRef(HTMLDivElement);
@@ -51,7 +48,6 @@ export default function Main() {
   function clear() {
     signaturePad.current?.clear();
     SetSignature("");
-    return;
   };
 
   async function saveSign(pageNumber) {
@@ -64,7 +60,7 @@ export default function Main() {
       const pngImage = await pdfDoc.embedPng(trimmedDataURL);
       const page = pdfDoc.getPages()[pageNumber - 1];
 
-      console.log("signatureSizeYYY: " + signatureSize.height);
+      console.log(`signatureSizeYYY: " + ${signatureSize.height}`);
 
       page.drawImage(pngImage, {
         x: signaturePoint.x + 195, // because first we set the pdf object positionx --+200
@@ -75,18 +71,18 @@ export default function Main() {
 
 
       const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true });
-      SetSignature("");//??
+      SetSignature("");// ??
       SetPdf(pdfBytes);
       SetSigning(true);
     }
   }
 
-  async function trim() {
+  const trim = async () => {
 
     SetSigning(false);
 
     const trimmedDataURL = signaturePad.current.toDataURL("image/png")
-    SetSignature(trimmedDataURL);//??
+    SetSignature(trimmedDataURL);// ??
     SetSigning(true);
 
   };
@@ -98,22 +94,21 @@ export default function Main() {
       SetPdf(reader.result);
       const pdfDoc = await PDFDocument.load(reader.result);
       const firstPage = pdfDoc.getPages()[0];
-      SetPdfHeight(firstPage.getHeight() + 'px');
-      //////////////////////
+      SetPdfHeight(`${firstPage.getHeight()} + "px"`);
+      // try
       const pdfObjectElement = document.querySelector('object[title="pdfobject"]');
       if (pdfObjectElement) {
         // Get the position of the element
         const rect = pdfObjectElement.getBoundingClientRect();
         setPdfObjectPosition({ x: rect.x + 200, y: rect.y + 100 });
-        //For Sign Button Position---
+        // For Sign Button Position---
         setPdfObjectRightX(rect.x + firstPage.getWidth() - 140);
         setPdfObjectRightY(rect.y + 10);
-        SetSignButtonShow("block"); //sign button display=block
+        SetSignButtonShow("block"); // sign button display=block
       }
     };
 
     reader.readAsDataURL(file);
-    return;
   };
 
 
@@ -145,7 +140,7 @@ export default function Main() {
           move: (event) => {
             const { x, y } = dragMoveListener(event);
             setSignaturePoint({ x, y });
-            console.log("x: " + x + " y: " + y);
+            // console.log("x: " + x + " y: " + y);
           },
         },
         inertia: false,
@@ -172,7 +167,7 @@ export default function Main() {
 
         <PdfContainer>
 
-          <div
+          <div role="button" tabIndex={0}
             id="signature"
             className={`z-20 box-content absolute ${signatureFocused
               ? "outline-2 outline-dashed outline-red-500"
@@ -188,19 +183,21 @@ export default function Main() {
               e.stopPropagation();
               setSignatureFocus(true);
             }}
+            onKeyDown={(e) => { if (e.key === "Enter") { console.log("sign enter press"); setSignatureFocus(true); } }}
           >
             <img
               className="object-contain"
               src={signature}
+              alt="pdfobject-alt"
               width="100%"
               height="100%"
               style={{ display: `${signature ? "block" : "none"}` }}
             />
           </div>
-          <button onClick={() => saveSign(1)} style={{
+          <button type="button" onClick={() => saveSign(1)} style={{
             position: "absolute",
             left: `${pdfObjectRightX}px`,
-            top: `${pdfObjectRightY }px`,
+            top: `${pdfObjectRightY}px`,
             backgroundColor: "#fff",
             border: "1px solid #ccc",
             padding: "5px",
@@ -210,8 +207,7 @@ export default function Main() {
           }}>
             Sign
           </button>
-          <object title="pdfobject" id="pdfobject" data={pdf} type="application/pdf" width="100%" height={pdfHeight} >
-          </object>
+          <object title="pdfobject" id="pdfobject" data={pdf} type="application/pdf" width="100%" height={pdfHeight} />
 
         </PdfContainer>
 
