@@ -27,6 +27,9 @@ export default function Main() {
   const [pdfObjectRightY, setPdfObjectRightY] = useState(0);
   const [signButtonShow, SetSignButtonShow] = useState("none");
   const [pdfObjectPosition, setPdfObjectPosition] = useState({ x: 0, y: 0 });
+  // In PDF scroll
+  const [scrollX, SetScrollX] = useState(0);
+  const [scrollY, SetScrollY] = useState(0);
   // Ref
   // const signaturePad = useRef< SignaturePad >(null);
   // const signatureRef = useRef< HTMLDivElement >(null);
@@ -40,17 +43,17 @@ export default function Main() {
     width: 60,
     height: 60,
   });
-  const [signaturePoint, setSignaturePoint] = useState({
-    x: 0,
-    y: 0,
-  });
+  // const [signaturePoint, setSignaturePoint] = useState({
+  //   x: 0,
+  //   y: 0,
+  // });
 
   function clear() {
     signaturePad.current?.clear();
     SetSignature("");
   };
 
-  async function saveSign(pageNumber) {
+  async function saveSign() {
     const trimmedDataURL = signaturePad.current.toDataURL("image/png")
 
     if (pdf) {
@@ -58,16 +61,46 @@ export default function Main() {
       const pdfDoc = await PDFDocument.load(pdf);
 
       const pngImage = await pdfDoc.embedPng(trimmedDataURL);
-      const page = pdfDoc.getPages()[pageNumber - 1];
+      const page = pdfDoc.getPages()[0];
 
-      console.log(`signatureSizeYYY: " + ${signatureSize.height}`);
+      console.log(`signatureSizeYYY: ${signatureSize.height}`);
+      const object = document.getElementById("myPdfObject"); // get the object by ID for pdf object
+      const divObject = document.getElementById("signature"); // get the object by ID for signature di
+      const divObjectBoundingRect = divObject.getBoundingClientRect(); // get the bounding rectangle of the object
+      const objectBoundingRect = object.getBoundingClientRect(); // get the bounding rectangle of the object
+      // console.log(`divObjectY: ${divObjectBoundingRect.top}`);
+     
+      object.addEventListener("scroll", function() {
+        // scrollX = object.scrollLeft;
+        // scrollY = object.scrollTop;
+        SetScrollX(object.scrollLeft);
+        SetScrollY(object.scrollTop);
+        console.log(`Scroll...,y: ${object.scrollTop}`);
+        // console.log("Scroll position X: " + scrollX + ", Scroll position Y: " + scrollY);
+      });
+      const objectX = divObjectBoundingRect.left - objectBoundingRect.left + scrollX; // calculate the X position of the div--SignObject
+      const objectY = divObjectBoundingRect.top - objectBoundingRect.top + scrollY; // calculate the Y position of the div--Signobject
+      // console.log("Object position: " + objectX + ", " + objectY); // print the total position of the object
 
-      page.drawImage(pngImage, {
-        x: signaturePoint.x + 195, // because first we set the pdf object positionx --+200
-        y: page.getHeight() - signaturePoint.y - 105 - (signatureSize.height - 60),// because first we set pdf ojbect positiony 100
+      const realPageNumber = Math.floor(objectY / page.getHeight());
+      console.log(`scrollY: ${ scrollY}`);
+      // console.log(`objectY: ${objectY} / ${page.getHeight()}`);
+      const realPage = pdfDoc.getPages()[realPageNumber];
+      const realPageY = objectY % page.getHeight();
+      realPage.drawImage(pngImage, {
+        x: objectX,
+        y: realPage.getHeight() - realPageY,
         width: signatureSize.width,
         height: signatureSize.height,
       });
+
+      // --temporaily comment
+      // page.drawImage(pngImage, {
+      //   x: signaturePoint.x + 195, // because first we set the pdf object positionx --+200
+      //   y: page.getHeight() - signaturePoint.y - 105 - (signatureSize.height - 60),// because first we set pdf ojbect positiony 100
+      //   width: signatureSize.width,
+      //   height: signatureSize.height,
+      // });
 
 
       const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true });
@@ -96,8 +129,9 @@ export default function Main() {
       const firstPage = pdfDoc.getPages()[0];
       SetPdfHeight(`${firstPage.getHeight()} + "px"`);
       // try
-      const pdfObjectElement = document.querySelector('object[title="pdfobject"]');
+      const pdfObjectElement = document.getElementById("myPdfObject");
       if (pdfObjectElement) {
+        console.log ("pdf object existed");
         // Get the position of the element
         const rect = pdfObjectElement.getBoundingClientRect();
         setPdfObjectPosition({ x: rect.x + 200, y: rect.y + 100 });
@@ -139,8 +173,8 @@ export default function Main() {
         listeners: {
           move: (event) => {
             const { x, y } = dragMoveListener(event);
-            setSignaturePoint({ x, y });
-            // console.log("x: " + x + " y: " + y);
+            // setSignaturePoint({ x, y });
+            console.log(`x: ${x} , y: ${y}`);
           },
         },
         inertia: false,
@@ -194,7 +228,7 @@ export default function Main() {
               style={{ display: `${signature ? "block" : "none"}` }}
             />
           </div>
-          <button type="button" onClick={() => saveSign(1)} style={{
+          <button type="button" onClick={() => saveSign()} style={{
             position: "absolute",
             left: `${pdfObjectRightX}px`,
             top: `${pdfObjectRightY}px`,
@@ -207,7 +241,7 @@ export default function Main() {
           }}>
             Sign
           </button>
-          <object title="pdfobject" id="pdfobject" data={pdf} type="application/pdf" width="100%" height={pdfHeight} />
+          <object title="pdfobject" id="myPdfObject" data={pdf} type="application/pdf" width="100%" height={pdfHeight} />
 
         </PdfContainer>
 
